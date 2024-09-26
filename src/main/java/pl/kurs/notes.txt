@@ -1,0 +1,165 @@
+JSON – JavaScript Object Notation jest tekstowym formatem zapisu oraz wymiany danych. JSON jest czytelny zarówno dla ludzi, jak i maszyn.
+
+Przykładowy JSON:
+{
+  "firstName": "Jan",
+  "lastName": "Kowalski",
+  "age": 25,
+  "isMarried": true,
+  "hobbies": ["Programowanie w Javie", "Spadochroniarstwo"],
+  "kids": [
+    {
+      "firstName": "Zosia",
+      "lastName": "Kowalska",
+      "age": 3
+    },
+    {
+      "firstName": "Krzyś",
+      "lastName": "Kowalski",
+      "age": 8
+    }
+  ]
+}
+
+Symbole wykorzystywane w JSONie określające strukturę dokumentu:
+•	{ oraz } – nawiasy klamerkowe – wewnątrz klamerek umieszcza się pary w postaci
+ ‘’nazwaAtrybutu”: <wartośćAtrybutu>. Pary oddzielamy przecinkiem, kolejność par jest bez znaczenia. Brak wymogu unikalności nazw atrybutów.
+•	[ oraz ] – nawiasy kwadratowe – oznaczają listę, elementy oddzielane są przecinkami.
+•	: - dwukropek – służy do przypisania wartości do atrybutu.
+•	, - przecinek – oddziela elementy, np. atrybuty, obiekty, elementy na liście.
+Słowa kluczowe wykorzystywane w JSONie:
+•	true;
+•	false;
+•	null;
+Białe znaki są ignorowane;
+
+
+Serializacja i deserializacja obiektu POJO:
+POJO – zwykła javowa klasa, która nie jest powiązana z żadnym frameworkiem (brak frameworkowych adnotacji), jest kompatybilna z każdym dowolnym programem javovym.
+Marshalling – zamiana obiektu na JSONa (potrzeba getterów);
+Unmarshalling – zamiana JSONa na obiekt (refleksja);
+
+
+
+Zapisywanie obiektu do pliku .json (ObjectMapper):
+public static void main(String[] args) throws IOException {
+
+    ObjectMapper objectMapper = new ObjectMapper();
+
+    List<Kid> kids = List.of(
+            new Kid("Maciuś", "Nowak", 4),
+            new Kid("Franek", "Nowak", 5)
+    );
+
+    Person adamNowak = new Person("Adam", "Nowak", 33,
+            true, List.of("motoryzacja", "astronomia"), kids);
+
+    objectMapper.writeValue(new File("src/main/resources/adamnowak.json"), adamNowak);
+
+}
+
+Zapisywanie obiektu do jsonowego Stringa (ObjectMapper):
+
+Kid kid = new Kid("Franek", "Kwiatkowski", 12);
+String kidJsonString = objectMapper.writeValueAsString(kid);
+System.out.println(kidJsonString);
+
+
+Zapisywanie obiektu do ładnego jsonowego Stringa (ObjectMapper):
+
+Kid kid = new Kid("Franek", "Kwiatkowski", 12);
+String prettyKidPrint = objectMapper.
+        writerWithDefaultPrettyPrinter().writeValueAsString(kid);
+System.out.println(prettyKidPrint);
+
+
+
+Tworzenie obiektu na podstawie pliku .json:
+
+Person janKowalski = objectMapper
+        .readValue(new File("src/main/resources/file.json"), Person.class);
+System.out.println(janKowalski);
+
+Tworzenie obiektu na podstawie pliku .json z danego URLa:
+
+Person personFromUrl = objectMapper.readValue(
+        new URL("http://some-domains.com/api/person.json"), Person.class);
+
+
+Tworzenie obiektu na podstawie Stringa z jsonem:
+String kidJson = "{\"firstName\":\"Maciuś\",\"lastName\":\"Nowak\",\"age\":4}";
+Kid kidFromString = objectMapper.readValue(kidJson, Kid.class);
+System.out.println(kidFromString);
+
+
+Tworzenie jednego obiektu ObjectMapper na całą aplikację (Singleton za pomocą Enuma):
+ObjectMapper może zostać konkretnie skonfigurowany – w tym przypadku wymuszamy korzystanie tylko z jednego obiektu ObjectMapper.
+Ogólnym zaleceniem jest aby korzystać ze statycznej instancji ObjectMapper’a (jest threadsafe), ale są też głosy,
+aby nie deklarować go jako statycznego zwłaszcza w aplikacjach wielowątkowych ze względu na ryzyko deadlock’a:
+pl.kurs.config.ObjectMapperHolder
+
+
+Ignorowanie dodatkowych pól w JSONie
+Jeżeli w JSONie znajduje się więcej atrybutów niż odpowiadających pól w klasie javy to przy próbie przekształcenia takiego
+JSONa w obiekt zostanie rzucony wyjątek UnrecognizedPropertyException (pokazać przykład).
+Rozwiązaniem tego problemu jest dodanie odpowiedniej linijki w konfiguracji ObjectMappera:
+
+mapper.configure(
+        DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+
+JsonNode
+JsonNode – klasa umozliwiająca przechowywanie drzewiastej struktury obiektu JSON
+ (obiektowa reprezentacja JSON ale inna niż String i inna niż obiekt POJO, coś tak jakby pomiędzy),
+ jest immutable. Jeżeli nie potrzebujemy tworzyć klas modelowych reprezentujących JSONa, to korzystamy wtedy z JsonNodów (jest to alternatywa):
+
+ Zamiana jsonowego Stringa w JsonNode:
+
+ String json = "{ \"firstName\" : \"Robert\" } ";
+ JsonNode jsonNode = objectMapper.readTree(json);
+ System.out.println(jsonNode.get("firstName").asText());
+
+ System.out.println(jsonNode.toPrettyString()); // ładne wyświetlenie
+
+
+Formatowanie daty Jacksona
+ObjectMapperowi można ustawić konkretny format daty:
+
+mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd"));
+
+
+Customowy Serializer/Deserializer
+Niekiedy zachodzi potrzeba np serializacji obiektu do JSONa inaczej niż robi to standardowo Jackson.
+Np. jeżeli JSON ma posiadać atrybuty nazywające się inaczej niż pola klasy lub niektóre pola klasy mają
+zostać pominięte przy serializacji. Jackson umożliwia ustawienie customowego serializera lub deserializera dla danej
+ klasy w ObjectMapperze – będzie on wzywany tylko podczas serializowania/deserializowania obiektu specyficznej klasy:
+
+public class CarSerializer extends StdSerializer<Car> {
+
+    public CarSerializer(Class<Car> t) {
+        super(t);
+    }
+
+    @Override
+    public void serialize(Car car, JsonGenerator jsonGenerator,
+                          SerializerProvider serializerProvider) throws IOException {
+        jsonGenerator.writeStartObject();
+        jsonGenerator.writeStringField("brand", car.getProducer());
+        jsonGenerator.writeNumberField("doorsNumber", car.getDoors());
+        jsonGenerator.writeEndObject();
+    }
+}
+CarSerializer cs = new CarSerializer(Car.class);
+
+SimpleModule sm = new SimpleModule("CarSerializer",
+        new Version(1, 0, 0, null, null, null));
+
+sm.addSerializer(Car.class, cs);
+mapper.registerModule(sm);
+
+
+Praca domowa:
+Dopisać customowy deserializer
+Zamienic wszystkie konstruktory, gettery, setter etc. na lomboka
+Pracka SQL
+Wrzucic na git
