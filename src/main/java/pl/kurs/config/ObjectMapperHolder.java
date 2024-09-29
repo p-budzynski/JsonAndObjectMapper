@@ -34,14 +34,11 @@ public enum ObjectMapperHolder {
 
 
         CarSerializer carSerializer = new CarSerializer(Car.class);
-        SimpleModule simpleModuleSerializer = new SimpleModule("CarSerializer");
-        simpleModuleSerializer.addSerializer(carSerializer);
-        om.registerModule(simpleModuleSerializer);
-
         CarDeserializer carDeserializer = new CarDeserializer(Car.class);
-        SimpleModule simpleModuleDeserializer = new SimpleModule("CarDeserializer");
-        simpleModuleDeserializer.addDeserializer(Car.class, carDeserializer);
-        om.registerModule(simpleModuleDeserializer);
+        SimpleModule simpleModule = new SimpleModule("CarSerializerAndDeserializer");
+        simpleModule.addSerializer(carSerializer);
+        simpleModule.addDeserializer(Car.class, carDeserializer);
+        om.registerModule(simpleModule);
 
         return om;
     }
